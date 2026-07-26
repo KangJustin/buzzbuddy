@@ -159,18 +159,3 @@ def get_session(session_id: str, db: DBSession = Depends(get_db)):
     if session is None:
         raise HTTPException(status_code=404, detail="session not found")
     return session
-
-
-@router.post("/sessions/{session_id}/dd-chat", response_model=DDChatResponse)
-def dd_chat(session_id: str, payload: DDChatRequest, db: DBSession = Depends(get_db)):
-    """Lets a designated driver ask questions about a concluded (or
-    in-progress) session. Uses a separate DO agent from the examiner loop --
-    read-only, no tool calling, never decides impairment itself."""
-    session = db.get(AgentSession, session_id)
-    if session is None:
-        raise HTTPException(status_code=404, detail="session not found")
-    try:
-        answer = ask_dd_companion(session, payload.question)
-    except OpenAIError as e:
-        raise HTTPException(status_code=502, detail=f"DD companion call failed: {e}")
-    return DDChatResponse(answer=answer)
