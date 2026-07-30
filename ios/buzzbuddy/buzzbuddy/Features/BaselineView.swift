@@ -18,6 +18,7 @@ import SwiftUI
 /// for the real check-in.
 struct BaselineView: View {
     @EnvironmentObject var appState: AppState
+    @Environment(\.tabBarHeight) private var tabBarHeight
 
     // Profile fields -- only relevant before onboarding is complete.
     @State private var name = ""
@@ -58,6 +59,13 @@ struct BaselineView: View {
     private var displayedMemoryPercent: Double? { appState.memoryBaselinePercent ?? pendingMemoryPercent }
     private var displayedGaitScore: Double? { appState.gaitBaselineScore }
 
+    /// Out of the 4 tests shown on this screen -- real count, nothing inferred.
+    private var completedMetricsCount: Int {
+        [displayedReactionMs, displayedGyroScore, displayedMemoryPercent, displayedGaitScore]
+            .compactMap { $0 }
+            .count
+    }
+
     private var canSubmitProfile: Bool {
         OnboardingValidation.isNonEmpty(name)
             && OnboardingValidation.isValidWeightLbs(weightLbs)
@@ -69,20 +77,28 @@ struct BaselineView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                Text("Baseline")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 24)
-                    .padding(.bottom, 14)
+                SectionHeader(
+                    title: "Baseline",
+                    subtitle: needsProfile
+                        ? "Set up your profile to get started."
+                        : "Your typical performance when you feel normal and unimpaired."
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, BuzzBuddyTheme.Spacing.lg)
+                .padding(.bottom, BuzzBuddyTheme.Spacing.md)
+                .padding(.horizontal, BuzzBuddyTheme.Spacing.md)
 
                 ScrollView {
                     content
-                        .padding(.horizontal, 12)
-                        .padding(.top, 16)
-                        .padding(.bottom, 24)
+                        .padding(.horizontal, BuzzBuddyTheme.Spacing.md)
+                        .padding(.top, BuzzBuddyTheme.Spacing.sm)
+                        .padding(.bottom, BuzzBuddyTheme.Spacing.lg)
+                }
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    Color.clear.frame(height: tabBarHeight)
                 }
             }
+            .background(BuzzBuddyTheme.Colors.background.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
         }
         .sheet(isPresented: $showReactionBaselineTest) {
@@ -123,7 +139,7 @@ struct BaselineView: View {
     // MARK: - Profile (onboarding)
 
     private var profileContent: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: BuzzBuddyTheme.Spacing.lg) {
             sectionGroup(title: "About you") {
                 formField(icon: "person.fill", text: $name, placeholder: "Name")
                 formField(icon: "scalemass.fill", text: $weightLbs, placeholder: "Weight (lbs)", keyboardType: .decimalPad)
@@ -138,7 +154,7 @@ struct BaselineView: View {
             if let error = appState.errorMessage {
                 Text(error)
                     .font(.footnote)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(StatusColorRole.red.color)
                     .padding(.leading, 4)
             }
 
@@ -147,92 +163,79 @@ struct BaselineView: View {
     }
 
     private var heightField: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "ruler.fill")
-                .font(.system(size: 15))
-                .foregroundStyle(.secondary)
+        BuzzBuddyCard {
+            HStack(spacing: 10) {
+                Image(systemName: "ruler.fill")
+                    .font(.system(size: 15))
+                    .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
 
-            TextField("Height (ft)", text: $heightFeet)
-                .font(.system(size: 16))
-                .keyboardType(.numberPad)
+                TextField("Height (ft)", text: $heightFeet)
+                    .font(.system(size: 16))
+                    .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
+                    .keyboardType(.numberPad)
 
-            Divider()
-                .frame(height: 18)
+                Divider()
+                    .overlay(BuzzBuddyTheme.Colors.border)
+                    .frame(height: 18)
 
-            TextField("Height (in)", text: $heightInches)
-                .font(.system(size: 16))
-                .keyboardType(.numberPad)
+                TextField("Height (in)", text: $heightInches)
+                    .font(.system(size: 16))
+                    .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
+                    .keyboardType(.numberPad)
+            }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(.secondarySystemBackground))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color(.systemGray4), lineWidth: 1)
-        )
     }
 
     private var saveProfileButton: some View {
-        HStack {
-            Spacer()
-            Button {
-                submitProfile()
-            } label: {
-                Text(appState.isLoading ? "Saving..." : "Save profile")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(canSubmitProfile && !appState.isLoading ? .white : Color.gray)
-                    .padding(.horizontal, 36)
-                    .padding(.vertical, 14)
-                    .background(
-                        Capsule()
-                            .fill(
-                                canSubmitProfile && !appState.isLoading
-                                    ? Color.yellow
-                                    : Color.yellow.opacity(0.35)
-                            )
-                    )
-            }
-            .disabled(!canSubmitProfile || appState.isLoading)
-        }
-        .padding(.top, 12)
+        BuzzBuddyButton(
+            title: appState.isLoading ? "Saving..." : "Save profile",
+            kind: .primary,
+            isLoading: appState.isLoading,
+            isEnabled: canSubmitProfile,
+            action: submitProfile
+        )
+        .padding(.top, BuzzBuddyTheme.Spacing.xs)
     }
 
     // MARK: - Baseline tests
 
     private var baselineContent: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: BuzzBuddyTheme.Spacing.lg) {
+            readinessCard
+
             sectionGroup(title: "Tests") {
-                testRow(
+                MetricCard(
                     icon: "bolt.fill",
                     title: "Reaction",
                     value: displayedReactionMs.map { "\(Int($0)) ms" },
+                    detail: displayedReactionMs != nil ? "Retest to update this value" : nil,
                     isRetest: displayedReactionMs != nil
                 ) {
                     showReactionBaselineTest = true
                 }
-                testRow(
+                MetricCard(
                     icon: "figure.stand",
                     title: "Balance",
                     value: displayedGyroScore.map { String(format: "%.2f", $0) },
+                    detail: displayedGyroScore != nil ? "Retest to update this value" : nil,
                     isRetest: displayedGyroScore != nil
                 ) {
                     showGyroBaselineTest = true
                 }
-                testRow(
+                MetricCard(
                     icon: "brain.head.profile",
                     title: "Memory",
                     value: displayedMemoryPercent.map { "\(Int($0))% accurate" },
+                    detail: displayedMemoryPercent != nil ? "Retest to update this value" : nil,
                     isRetest: displayedMemoryPercent != nil
                 ) {
                     showMemoryBaselineTest = true
                 }
-                testRow(
+                MetricCard(
                     icon: "figure.walk",
                     title: "Walking",
                     value: displayedGaitScore.map { String(format: "%.2f", $0) },
+                    detail: displayedGaitScore != nil ? "Retest to update this value" : nil,
                     isRetest: displayedGaitScore != nil
                 ) {
                     showGaitBaselineTest = true
@@ -243,17 +246,50 @@ struct BaselineView: View {
                 && (pendingReactionMs != nil || pendingGyroScore != nil || pendingMemoryPercent != nil) {
                 Text("All three are needed before your baseline is saved.")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
                     .padding(.leading, 4)
             }
 
             if let error = appState.baselineErrorMessage {
                 Text(error)
                     .font(.footnote)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(StatusColorRole.red.color)
                     .padding(.leading, 4)
             }
         }
+    }
+
+    private var readinessCard: some View {
+        BuzzBuddyCard(elevated: true) {
+            HStack(spacing: BuzzBuddyTheme.Spacing.md) {
+                ZStack {
+                    Circle()
+                        .stroke(BuzzBuddyTheme.Colors.surfaceElevated2, lineWidth: 5)
+                    Circle()
+                        .trim(from: 0, to: CGFloat(completedMetricsCount) / 4)
+                        .stroke(BuzzBuddyTheme.Colors.accentYellow, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                    Text("\(completedMetricsCount)/4")
+                        .font(BuzzBuddyTheme.Typography.numeric(13, weight: .semibold))
+                        .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
+                }
+                .frame(width: 48, height: 48)
+                .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Baseline readiness")
+                        .font(BuzzBuddyTheme.Typography.headline)
+                        .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
+                    Text(completedMetricsCount == 4 ? "All set." : "\(completedMetricsCount) of 4 tests recorded.")
+                        .font(.caption)
+                        .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
+                }
+
+                Spacer()
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Baseline readiness: \(completedMetricsCount) of 4 tests recorded")
     }
 
     // MARK: - Shared row builders
@@ -262,15 +298,11 @@ struct BaselineView: View {
         title: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title.uppercased())
-                .font(.caption)
-                .fontWeight(.semibold)
-                .tracking(0.8)
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: BuzzBuddyTheme.Spacing.sm) {
+            SectionHeader(title: title, style: .section)
                 .padding(.leading, 4)
 
-            VStack(spacing: 10) {
+            VStack(spacing: BuzzBuddyTheme.Spacing.sm) {
                 content()
             }
         }
@@ -282,76 +314,18 @@ struct BaselineView: View {
         placeholder: String,
         keyboardType: UIKeyboardType = .default
     ) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 15))
-                .foregroundStyle(.secondary)
-
-            TextField(placeholder, text: text)
-                .font(.system(size: 16))
-                .keyboardType(keyboardType)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(.secondarySystemBackground))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color(.systemGray4), lineWidth: 1)
-        )
-    }
-
-    private func testRow(
-        icon: String,
-        title: String,
-        value: String?,
-        isRetest: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 15))
-                .foregroundStyle(.secondary)
-                .frame(width: 20)
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title)
+        BuzzBuddyCard {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
                     .font(.system(size: 15))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
 
-                Text(value ?? "Not set")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
+                TextField(placeholder, text: text)
+                    .font(.system(size: 16))
+                    .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
+                    .keyboardType(keyboardType)
             }
-
-            Spacer()
-
-            Button(action: action) {
-                Text(isRetest ? "Retest" : "Run test")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(appState.isLoading ? Color.gray : .white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(
-                        Capsule()
-                            .fill(appState.isLoading ? Color.yellow.opacity(0.35) : Color.yellow)
-                    )
-            }
-            .buttonStyle(.plain)
-            .disabled(appState.isLoading)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(.secondarySystemBackground))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color(.systemGray4), lineWidth: 1)
-        )
     }
 
     // MARK: - Actions

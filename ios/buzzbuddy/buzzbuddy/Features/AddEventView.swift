@@ -145,8 +145,8 @@ struct AddEventView: View {
         VStack(spacing: 0) {
             ZStack {
                 Text("Add Event")
-                    .font(.title2)
-                    .fontWeight(.semibold)
+                    .font(BuzzBuddyTheme.Typography.headline)
+                    .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
 
                 HStack {
                     Button {
@@ -154,23 +154,27 @@ struct AddEventView: View {
                     } label: {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 18, weight: .semibold))
-                            .frame(width: 32, height: 32)
+                            .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
+                            .frame(width: 44, height: 44)
                     }
+                    .accessibilityLabel("Back")
 
                     Spacer()
                 }
-                .padding(.leading, 12)
+                .padding(.leading, 4)
             }
-            .padding(.top, 24)
-            .padding(.bottom, 14)
+            .padding(.top, BuzzBuddyTheme.Spacing.lg)
+            .padding(.bottom, BuzzBuddyTheme.Spacing.md)
+            .padding(.horizontal, BuzzBuddyTheme.Spacing.sm)
 
             ScrollView {
                 content
-                    .padding(.horizontal, 12)
-                    .padding(.top, 16)
-                    .padding(.bottom, 24)
+                    .padding(.horizontal, BuzzBuddyTheme.Spacing.md)
+                    .padding(.top, BuzzBuddyTheme.Spacing.sm)
+                    .padding(.bottom, BuzzBuddyTheme.Spacing.lg)
             }
         }
+        .background(BuzzBuddyTheme.Colors.background.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .task {
             await contactsVM.syncIfNeeded()
@@ -178,8 +182,8 @@ struct AddEventView: View {
     }
 
     private var content: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            formField(title: "Name", text: $name, placeholder: "Event name")
+        VStack(alignment: .leading, spacing: BuzzBuddyTheme.Spacing.lg) {
+            formField(title: "Name", text: $name, placeholder: "Event name", icon: "pencil")
             LocationField(selectedLocation: $selectedLocation)
             ContactField(selectedContact: $selectedContact, contacts: contactsVM.availableContacts)
             saveButton
@@ -193,24 +197,8 @@ struct AddEventView: View {
     }
 
     private var saveButton: some View {
-        HStack {
-            Spacer()
-            Button {
-                saveEvent()
-            } label: {
-                Text("Save")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(isFormComplete ? .white : Color.gray)
-                    .padding(.horizontal, 36)
-                    .padding(.vertical, 14)
-                    .background(
-                        Capsule()
-                            .fill(isFormComplete ? Color.yellow : Color.yellow.opacity(0.35))
-                    )
-            }
-            .disabled(!isFormComplete)
-        }
-        .padding(.top, 12)
+        BuzzBuddyButton(title: "Save", kind: .primary, isEnabled: isFormComplete, action: saveEvent)
+            .padding(.top, BuzzBuddyTheme.Spacing.sm)
     }
 
     private func saveEvent() {
@@ -223,34 +211,24 @@ struct AddEventView: View {
     private func formField(
         title: String,
         text: Binding<String>,
-        placeholder: String
+        placeholder: String,
+        icon: String
     ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title.uppercased())
-                .font(.caption)
-                .fontWeight(.semibold)
-                .tracking(0.8)
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: BuzzBuddyTheme.Spacing.sm) {
+            SectionHeader(title: title, style: .section)
                 .padding(.leading, 4)
 
-            HStack(spacing: 10) {
-                Image(systemName: "pencil")
-                    .font(.system(size: 15))
-                    .foregroundStyle(.secondary)
+            BuzzBuddyCard {
+                HStack(spacing: 10) {
+                    Image(systemName: icon)
+                        .font(.system(size: 15))
+                        .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
 
-                TextField(placeholder, text: text)
-                    .font(.system(size: 16))
+                    TextField(placeholder, text: text)
+                        .font(.system(size: 16))
+                        .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
+                }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(.secondarySystemBackground))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(Color(.systemGray4), lineWidth: 1)
-            )
         }
     }
 }
@@ -264,12 +242,8 @@ private struct LocationField: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("LOCATION")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .tracking(0.8)
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: BuzzBuddyTheme.Spacing.sm) {
+            SectionHeader(title: "Location", style: .section)
                 .padding(.leading, 4)
 
             if let location = selectedLocation {
@@ -284,108 +258,100 @@ private struct LocationField: View {
     }
 
     private var searchField: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 15))
-                .foregroundStyle(.secondary)
+        BuzzBuddyCard {
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 15))
+                    .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
 
-            TextField("Search for an address or place", text: $searchVM.query)
-                .font(.system(size: 16))
-                .focused($isFocused)
+                TextField("Search for an address or place", text: $searchVM.query)
+                    .font(.system(size: 16))
+                    .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
+                    .focused($isFocused)
+            }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(.secondarySystemBackground))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color(.systemGray4), lineWidth: 1)
-        )
     }
 
     private var suggestionsList: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(searchVM.results.enumerated()), id: \.offset) { index, result in
-                Button {
-                    Task { await select(result) }
-                } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(result.title)
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(.primary)
-                        if !result.subtitle.isEmpty {
-                            Text(result.subtitle)
-                                .font(.system(size: 13))
-                                .foregroundStyle(.secondary)
+        BuzzBuddyCard(padding: 0) {
+            VStack(spacing: 0) {
+                ForEach(Array(searchVM.results.enumerated()), id: \.offset) { index, result in
+                    Button {
+                        Task { await select(result) }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(result.title)
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
+                            if !result.subtitle.isEmpty {
+                                Text(result.subtitle)
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
+                            }
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                }
-                .buttonStyle(.plain)
+                    .buttonStyle(.plain)
 
-                if index < searchVM.results.count - 1 {
-                    Divider()
-                        .padding(.leading, 14)
+                    if index < searchVM.results.count - 1 {
+                        Divider()
+                            .overlay(BuzzBuddyTheme.Colors.border)
+                            .padding(.leading, 14)
+                    }
                 }
             }
         }
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(.secondarySystemBackground))
-        )
     }
 
     private func selectedLocationCard(_ location: EventLocation) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Map(initialPosition: .region(
-                MKCoordinateRegion(
-                    center: location.coordinate,
-                    span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-                )
-            )) {
-                Marker(location.name, coordinate: location.coordinate)
-            }
-            .frame(height: 130)
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .allowsHitTesting(false)
-            .padding(.bottom, 10)
-
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "mappin.circle.fill")
-                    .font(.system(size: 18))
-                    .foregroundStyle(.white)
-                    .padding(.top, 1)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(location.name)
-                        .font(.system(size: 15, weight: .semibold))
-                    if !location.address.isEmpty {
-                        Text(location.address)
-                            .font(.system(size: 13))
-                            .foregroundStyle(.secondary)
-                    }
+        BuzzBuddyCard(padding: 10) {
+            VStack(alignment: .leading, spacing: 0) {
+                Map(initialPosition: .region(
+                    MKCoordinateRegion(
+                        center: location.coordinate,
+                        span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                    )
+                )) {
+                    Marker(location.name, coordinate: location.coordinate)
                 }
+                .frame(height: 130)
+                .clipShape(RoundedRectangle(cornerRadius: BuzzBuddyTheme.Radius.sm, style: .continuous))
+                .allowsHitTesting(false)
+                .padding(.bottom, 10)
 
-                Spacer()
-
-                Button {
-                    clearSelection()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "mappin.circle.fill")
                         .font(.system(size: 18))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(BuzzBuddyTheme.Colors.accentYellow)
+                        .padding(.top, 1)
+                        .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(location.name)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
+                        if !location.address.isEmpty {
+                            Text(location.address)
+                                .font(.system(size: 13))
+                                .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
+                        }
+                    }
+
+                    Spacer()
+
+                    Button {
+                        clearSelection()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
+                    }
+                    .accessibilityLabel("Clear selected location")
                 }
             }
         }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.secondarySystemBackground))
-        )
     }
 
     private func select(_ completion: MKLocalSearchCompletion) async {
@@ -417,12 +383,8 @@ private struct ContactField: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("CONTACT")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .tracking(0.8)
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: BuzzBuddyTheme.Spacing.sm) {
+            SectionHeader(title: "Contact", style: .section)
                 .padding(.leading, 4)
 
             if let contact = selectedContact {
@@ -437,80 +399,70 @@ private struct ContactField: View {
     }
 
     private var searchField: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "person.crop.circle")
-                .font(.system(size: 15))
-                .foregroundStyle(.secondary)
+        BuzzBuddyCard {
+            HStack(spacing: 10) {
+                Image(systemName: "person.crop.circle")
+                    .font(.system(size: 15))
+                    .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
 
-            TextField("Search your contacts", text: $query)
-                .font(.system(size: 16))
-                .focused($isFocused)
+                TextField("Search your contacts", text: $query)
+                    .font(.system(size: 16))
+                    .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
+                    .focused($isFocused)
+            }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(.secondarySystemBackground))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color(.systemGray4), lineWidth: 1)
-        )
     }
 
     private var suggestionsList: some View {
-        VStack(spacing: 0) {
-            ForEach(matches) { contact in
-                Button {
-                    select(contact)
-                } label: {
-                    HStack(spacing: 12) {
-                        avatar(for: contact)
-                        Text(contact.name)
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(.primary)
-                        Spacer()
+        BuzzBuddyCard(padding: 0) {
+            VStack(spacing: 0) {
+                ForEach(matches) { contact in
+                    Button {
+                        select(contact)
+                    } label: {
+                        HStack(spacing: 12) {
+                            avatar(for: contact)
+                            Text(contact.name)
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                }
-                .buttonStyle(.plain)
+                    .buttonStyle(.plain)
 
-                if contact.id != matches.last?.id {
-                    Divider()
-                        .padding(.leading, 50)
+                    if contact.id != matches.last?.id {
+                        Divider()
+                            .overlay(BuzzBuddyTheme.Colors.border)
+                            .padding(.leading, 50)
+                    }
                 }
             }
         }
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(.secondarySystemBackground))
-        )
     }
 
     private func selectedContactCard(_ contact: Contact) -> some View {
-        HStack(spacing: 12) {
-            avatar(for: contact)
+        BuzzBuddyCard {
+            HStack(spacing: 12) {
+                avatar(for: contact)
 
-            Text(contact.name)
-                .font(.system(size: 15, weight: .semibold))
+                Text(contact.name)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
 
-            Spacer()
+                Spacer()
 
-            Button {
-                clearSelection()
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 18))
-                    .foregroundStyle(.white)
+                Button {
+                    clearSelection()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
+                }
+                .accessibilityLabel("Clear selected contact")
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.secondarySystemBackground))
-        )
     }
 
     @ViewBuilder
@@ -523,12 +475,12 @@ private struct ContactField: View {
                 .clipShape(Circle())
         } else {
             Circle()
-                .fill(Color.accentColor.opacity(0.15))
+                .fill(BuzzBuddyTheme.Colors.accentYellow.opacity(0.18))
                 .frame(width: 36, height: 36)
                 .overlay(
                     Text(initials(for: contact.name))
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(BuzzBuddyTheme.Colors.accentYellow)
                 )
         }
     }

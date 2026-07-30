@@ -84,9 +84,60 @@ final class AppState: ObservableObject {
     /// synchronous initial `phase`). Only does work if a session needs
     /// restoring; otherwise it's a no-op.
     func bootstrap() async {
+        #if DEBUG
+        if await seedDebugScreenshotStateIfNeeded() { return }
+        #endif
         guard case .restoring = phase, let sessionId = persistence.sessionId else { return }
         await restoreSession(sessionId: sessionId)
     }
+
+    #if DEBUG
+    /// Screenshot helper: BUZZBUDDY_DEBUG_PHASE=reviewing|verdict|game seeds a
+    /// realistic session and phase so those screens can be captured without
+    /// a live backend or a real test run. No-op unless the launch
+    /// environment variable is set (see HomeView's matching debug hook,
+    /// which auto-presents the check-in cover under the same flag).
+    private func seedDebugScreenshotStateIfNeeded() async -> Bool {
+        guard let target = ProcessInfo.processInfo.environment["BUZZBUDDY_DEBUG_PHASE"] else { return false }
+
+        let baseline = [
+            "Retrieved your sober baseline: reaction 412ms, balance 0.18g, memory 94%.",
+            "Reaction time is 187ms slower than baseline (+45%) -- confidence of impairment is now 68%.",
+        ]
+        let escalation = "Balance sway increased to 0.49g, well above your 0.18g baseline -- confidence of impairment is now 81%. Requesting one more test to confirm before concluding."
+        let conclusion = "Reaction and balance both showed significant deviation from your sober baseline across two independent tests. Confidence of impairment: 81%."
+
+        switch target {
+        case "reviewing":
+            session = SessionOut(
+                id: "debug", eventId: "debug", status: "MILDLY_IMPAIRED", confidence: 0.68,
+                pendingTest: "balance", reasoningLog: baseline, finalSummary: nil, notified: false
+            )
+            phase = .reviewingTest(pendingTest: "balance")
+            // Mirrors the real timing: ReviewingTestView's onAppear captures
+            // the baseline reasoning count immediately, then the "new" line
+            // arrives once the (simulated) network call resolves.
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            session?.reasoningLog.append(escalation)
+            session?.confidence = 0.81
+        case "verdict":
+            session = SessionOut(
+                id: "debug", eventId: "debug", status: "SEVERELY_IMPAIRED", confidence: 0.81,
+                pendingTest: nil, reasoningLog: baseline + [escalation], finalSummary: conclusion, notified: false
+            )
+            phase = .verdict
+        case "game":
+            session = SessionOut(
+                id: "debug", eventId: "debug", status: "in_progress", confidence: 0.0,
+                pendingTest: "reaction", reasoningLog: [], finalSummary: nil, notified: false
+            )
+            phase = .takingTest(pendingTest: "reaction")
+        default:
+            return false
+        }
+        return true
+    }
+    #endif
 
     func completeOnboarding(
         name: String,

@@ -16,39 +16,39 @@ struct GyroBalanceTestView: View {
     @State private var timer: Timer?
 
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: BuzzBuddyTheme.Spacing.lg) {
             Text(isRunning ? "Hold your phone as steady as possible" : "Ready to test your balance")
                 .font(.title)
                 .fontWeight(.bold)
+                .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
                 .multilineTextAlignment(.center)
 
             Text("Stand on one leg to balance")
                 .font(.title3)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
                 .multilineTextAlignment(.center)
 
             ZStack {
-                Circle().stroke(lineWidth: 8).opacity(0.2)
+                Circle().stroke(BuzzBuddyTheme.Colors.surfaceElevated2, lineWidth: 8)
                 Circle()
                     .trim(from: 0, to: CGFloat(timeRemaining / Self.duration))
-                    .stroke(isRunning ? Color.blue : Color.gray, lineWidth: 8)
+                    .stroke(isRunning ? BuzzBuddyTheme.Colors.accentYellow : BuzzBuddyTheme.Colors.textSecondary, lineWidth: 8)
                     .rotationEffect(.degrees(-90))
                 Text(String(format: "%.1f", timeRemaining))
-                    .font(.system(size: 48, weight: .bold))
+                    .font(BuzzBuddyTheme.Typography.numeric(48, weight: .bold))
+                    .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
             }
             .frame(width: 160, height: 160)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(isRunning ? "\(String(format: "%.0f", timeRemaining)) seconds remaining" : "Balance test ready")
 
             if !isRunning {
-                Button("Start Balance Test") { start() }
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
+                BuzzBuddyButton(title: "Start Balance Test", kind: .primary, fullWidth: false) { start() }
             }
         }
         .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(BuzzBuddyTheme.Colors.background.ignoresSafeArea())
         .onDisappear { stop() }
     }
 

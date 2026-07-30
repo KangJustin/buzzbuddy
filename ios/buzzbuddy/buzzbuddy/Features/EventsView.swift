@@ -74,36 +74,27 @@ struct EventsView: View {
         NavigationStack {
             ZStack(alignment: .bottomTrailing) {
                 VStack(spacing: 0) {
-                    Text("Events")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 24)
-                        .padding(.bottom, 14)
+                    SectionHeader(title: "Events")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, BuzzBuddyTheme.Spacing.lg)
+                        .padding(.bottom, BuzzBuddyTheme.Spacing.md)
+                        .padding(.horizontal, BuzzBuddyTheme.Spacing.md)
 
                     ScrollView {
                         content
-                            .padding(.horizontal, 16)
-                            .padding(.top, 16)
+                            .padding(.horizontal, BuzzBuddyTheme.Spacing.md)
+                            .padding(.top, BuzzBuddyTheme.Spacing.sm)
                     }
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         Color.clear.frame(height: tabBarHeight)
                     }
                 }
 
-                Button {
-                    showingAddEvent = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 26, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 68, height: 68)
-                        .background(Circle().fill(Color.yellow))
-                        .shadow(color: .black.opacity(0.2), radius: 6, y: 3)
+                if !eventStore.events.isEmpty {
+                    fab
                 }
-                .padding(.trailing, 20)
-                .padding(.bottom, tabBarHeight + 28)
             }
+            .background(BuzzBuddyTheme.Colors.background.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(isPresented: $showingAddEvent) {
                 AddEventView(eventStore: eventStore)
@@ -111,15 +102,28 @@ struct EventsView: View {
         }
     }
 
+    private var fab: some View {
+        Button {
+            showingAddEvent = true
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 26, weight: .semibold))
+                .foregroundStyle(.black)
+                .frame(width: 60, height: 60)
+                .background(Circle().fill(BuzzBuddyTheme.Colors.accentYellow))
+                .shadow(color: BuzzBuddyTheme.Shadow.soft.color, radius: BuzzBuddyTheme.Shadow.soft.radius, y: BuzzBuddyTheme.Shadow.soft.y)
+        }
+        .accessibilityLabel("Create Event")
+        .padding(.trailing, BuzzBuddyTheme.Spacing.lg)
+        .padding(.bottom, tabBarHeight + BuzzBuddyTheme.Spacing.lg)
+    }
+
     @ViewBuilder
     private var content: some View {
         if eventStore.events.isEmpty {
-            Text("No events yet")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .padding(.top, 40)
+            emptyState
         } else {
-            VStack(spacing: 14) {
+            VStack(spacing: BuzzBuddyTheme.Spacing.md) {
                 ForEach(eventStore.events) { event in
                     EventCard(event: event) {
                         withAnimation(.easeOut(duration: 0.25)) {
@@ -131,6 +135,29 @@ struct EventsView: View {
             }
         }
     }
+
+    private var emptyState: some View {
+        VStack(spacing: BuzzBuddyTheme.Spacing.md) {
+            Image(systemName: "calendar.badge.plus")
+                .font(.system(size: 36))
+                .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
+                .accessibilityHidden(true)
+            Text("No events yet")
+                .font(BuzzBuddyTheme.Typography.headline)
+                .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
+            Text("Add a night out to keep a location and a trusted contact on hand.")
+                .font(.subheadline)
+                .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
+                .multilineTextAlignment(.center)
+            BuzzBuddyButton(title: "Create Event", systemImage: "plus", kind: .primary, fullWidth: false) {
+                showingAddEvent = true
+            }
+            .padding(.top, BuzzBuddyTheme.Spacing.sm)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, BuzzBuddyTheme.Spacing.xxl)
+        .padding(.horizontal, BuzzBuddyTheme.Spacing.lg)
+    }
 }
 
 // MARK: - Event Card
@@ -140,77 +167,69 @@ private struct EventCard: View {
     let onDelete: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .top, spacing: 12) {
-                Text(event.name)
-                    .font(.system(size: 20, weight: .bold))
+        BuzzBuddyCard {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .top, spacing: 12) {
+                    Text(event.name)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
 
-                Spacer()
+                    Spacer()
 
-                Button {
-                    onDelete()
-                } label: {
-                    Image(systemName: "checkmark.circle")
-                        .font(.system(size: 24))
-                        .foregroundStyle(.white)
-                }
-                .buttonStyle(.plain)
-            }
-
-            if let location = event.location {
-                Text(location.name)
-                    .font(.system(size: 14))
-                    .foregroundStyle(.secondary)
-
-                Map(initialPosition: .region(
-                    MKCoordinateRegion(
-                        center: location.coordinate,
-                        span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-                    )
-                )) {
-                    Marker(location.name, coordinate: location.coordinate)
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: 160)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .allowsHitTesting(false)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(Color(.systemGray4), lineWidth: 1)
-                )
-                .padding(.top, 6)
-            }
-
-            if let contact = event.contact {
-                Divider()
-                    .padding(.top, 10)
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("CONTACT")
-                        .font(.caption2)
-                        .fontWeight(.semibold)
-                        .tracking(0.8)
-                        .foregroundStyle(.secondary)
-
-                    HStack(spacing: 10) {
-                        avatar(for: contact)
-                        Text(contact.name)
-                            .font(.system(size: 15, weight: .medium))
+                    Button {
+                        onDelete()
+                    } label: {
+                        Image(systemName: "checkmark.circle")
+                            .font(.system(size: 24))
+                            .foregroundStyle(BuzzBuddyTheme.Colors.accentYellow)
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Mark \(event.name) as done")
                 }
-                .padding(.top, 10)
+
+                if let location = event.location {
+                    Text(location.name)
+                        .font(.system(size: 14))
+                        .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
+
+                    Map(initialPosition: .region(
+                        MKCoordinateRegion(
+                            center: location.coordinate,
+                            span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                        )
+                    )) {
+                        Marker(location.name, coordinate: location.coordinate)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 160)
+                    .clipShape(RoundedRectangle(cornerRadius: BuzzBuddyTheme.Radius.sm, style: .continuous))
+                    .allowsHitTesting(false)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: BuzzBuddyTheme.Radius.sm, style: .continuous)
+                            .stroke(BuzzBuddyTheme.Colors.border, lineWidth: 1)
+                    )
+                    .padding(.top, 6)
+                }
+
+                if let contact = event.contact {
+                    Divider()
+                        .overlay(BuzzBuddyTheme.Colors.border)
+                        .padding(.top, 10)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        SectionHeader(title: "Contact", style: .section)
+
+                        HStack(spacing: 10) {
+                            avatar(for: contact)
+                            Text(contact.name)
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
+                        }
+                    }
+                    .padding(.top, 10)
+                }
             }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(Color(.secondarySystemBackground))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(Color(.systemGray4), lineWidth: 1)
-        )
     }
 
     @ViewBuilder
@@ -223,12 +242,12 @@ private struct EventCard: View {
                 .clipShape(Circle())
         } else {
             Circle()
-                .fill(Color.accentColor.opacity(0.15))
+                .fill(BuzzBuddyTheme.Colors.accentYellow.opacity(0.18))
                 .frame(width: 32, height: 32)
                 .overlay(
                     Text(initials(for: contact.name))
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(BuzzBuddyTheme.Colors.accentYellow)
                 )
         }
     }

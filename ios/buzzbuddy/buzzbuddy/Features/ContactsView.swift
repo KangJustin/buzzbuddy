@@ -99,6 +99,7 @@ final class ContactsViewModel: ObservableObject {
 struct ContactsView: View {
     @StateObject private var viewModel = ContactsViewModel()
     @StateObject private var eventStore = EventStore.shared
+    @StateObject private var emergencyStore = EmergencyContactStore()
     @Environment(\.tabBarHeight) private var tabBarHeight
 
     /// Height of the strip that sits on top of the tab bar.
@@ -121,17 +122,16 @@ struct ContactsView: View {
         NavigationStack {
             ZStack(alignment: .bottom) {
                 VStack(spacing: 0) {
-                    Text("Contacts")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 24)
-                        .padding(.bottom, 14)
+                    SectionHeader(title: "Contacts")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, BuzzBuddyTheme.Spacing.lg)
+                        .padding(.bottom, BuzzBuddyTheme.Spacing.md)
+                        .padding(.horizontal, BuzzBuddyTheme.Spacing.md)
 
                     ScrollView {
                         content
-                            .padding(.horizontal, 16)
-                            .padding(.top, 8)
+                            .padding(.horizontal, BuzzBuddyTheme.Spacing.md)
+                            .padding(.top, BuzzBuddyTheme.Spacing.sm)
                     }
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         Color.clear.frame(height: tabBarHeight + stripHeight)
@@ -140,6 +140,7 @@ struct ContactsView: View {
 
                 bottomStrip
             }
+            .background(BuzzBuddyTheme.Colors.background.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
         }
         .task {
@@ -151,7 +152,7 @@ struct ContactsView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Get a ride")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
 
             HStack(spacing: 20) {
                 ForEach(RideService.all) { service in
@@ -160,11 +161,11 @@ struct ContactsView: View {
             }
             .padding(.bottom, 12)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, BuzzBuddyTheme.Spacing.md)
         .padding(.top, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: stripHeight)
-        .background(Color.clear)
+        .background(BuzzBuddyTheme.Colors.surfaceElevated1)
         .padding(.bottom, tabBarHeight)
     }
 
@@ -177,7 +178,7 @@ struct ContactsView: View {
                     title: "Active",
                     contacts: activeContacts,
                     isActive: true,
-                    emptyText: "No active contacts yet"
+                    emptyText: "Add someone you trust before your next night out."
                 )
                 sectionCard(
                     title: "Available",
@@ -188,12 +189,14 @@ struct ContactsView: View {
             }
         case .notDetermined:
             ProgressView()
+                .tint(BuzzBuddyTheme.Colors.accentYellow)
                 .frame(maxWidth: .infinity)
                 .padding(.top, 120)
         case .denied, .restricted:
             permissionDeniedView
         @unknown default:
             ProgressView()
+                .tint(BuzzBuddyTheme.Colors.accentYellow)
                 .frame(maxWidth: .infinity)
                 .padding(.top, 120)
         }
@@ -206,24 +209,25 @@ struct ContactsView: View {
         emptyText: String
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title.uppercased())
-                .font(.caption)
-                .fontWeight(.semibold)
-                .tracking(0.8)
-                .foregroundStyle(.secondary)
+            SectionHeader(title: title, style: .section)
                 .padding(.leading, 4)
 
             if contacts.isEmpty {
                 Text(emptyText)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 4)
                     .padding(.vertical, 8)
             } else {
-                VStack(spacing: 4) {
+                VStack(spacing: 8) {
                     ForEach(contacts) { contact in
-                        ContactRow(contact: contact, isActive: isActive)
+                        ContactRow(
+                            contact: contact,
+                            isActive: isActive,
+                            isEmergency: emergencyStore.isEmergencyContact(contact.id),
+                            onToggleEmergency: { emergencyStore.toggle(contact.id) }
+                        )
                     }
                 }
             }
@@ -234,22 +238,23 @@ struct ContactsView: View {
         VStack(spacing: 14) {
             Image(systemName: "person.crop.circle.badge.exclamationmark")
                 .font(.system(size: 36))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
+                .accessibilityHidden(true)
 
             Text("Contacts Access Needed")
-                .font(.headline)
+                .font(BuzzBuddyTheme.Typography.headline)
+                .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
 
             Text("Enable contacts access in Settings to sync your contacts.")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
                 .multilineTextAlignment(.center)
 
-            Button("Open Settings") {
+            BuzzBuddyButton(title: "Open Settings", kind: .primary, fullWidth: false) {
                 if let url = URL(string: UIApplication.openSettingsURLString) {
                     UIApplication.shared.open(url)
                 }
             }
-            .buttonStyle(.borderedProminent)
             .padding(.top, 4)
         }
         .padding(24)
@@ -263,18 +268,60 @@ struct ContactsView: View {
 private struct ContactRow: View {
     let contact: Contact
     let isActive: Bool
+    let isEmergency: Bool
+    let onToggleEmergency: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            avatar
-            Text(contact.name)
-                .font(.system(size: 16, weight: .medium))
-            Spacer()
+        BuzzBuddyCard {
+            HStack(spacing: 12) {
+                avatar
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(contact.name)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
+                    if isEmergency {
+                        StatusBadge(label: "Emergency contact", role: .red, systemImage: "star.fill")
+                    }
+                }
+
+                Spacer()
+
+                HStack(spacing: 4) {
+                    iconButton(
+                        icon: isEmergency ? "star.fill" : "star",
+                        tint: isEmergency ? StatusColorRole.red.color : BuzzBuddyTheme.Colors.textSecondary,
+                        accessibilityLabel: isEmergency ? "Remove emergency contact" : "Mark as emergency contact",
+                        action: onToggleEmergency
+                    )
+                    if let phoneNumber = contact.phoneNumber {
+                        iconButton(icon: "message.fill", tint: BuzzBuddyTheme.Colors.accentYellow, accessibilityLabel: "Message \(contact.name)") {
+                            open(urlString: "sms:\(phoneNumber)")
+                        }
+                        iconButton(icon: "phone.fill", tint: BuzzBuddyTheme.Colors.accentYellow, accessibilityLabel: "Call \(contact.name)") {
+                            open(urlString: "tel:\(phoneNumber)")
+                        }
+                    }
+                }
+            }
         }
-        .foregroundStyle(isActive ? Color.primary : Color.secondary)
-        .opacity(isActive ? 1 : 0.5)
-        .padding(.horizontal, 4)
-        .padding(.vertical, 6)
+        .opacity(isActive ? 1 : 0.6)
+    }
+
+    private func iconButton(icon: String, tint: Color, accessibilityLabel: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 36, height: 36)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private func open(urlString: String) {
+        guard let url = URL(string: urlString) else { return }
+        UIApplication.shared.open(url)
     }
 
     @ViewBuilder
@@ -287,12 +334,12 @@ private struct ContactRow: View {
                 .clipShape(Circle())
         } else {
             Circle()
-                .fill(Color.accentColor.opacity(0.15))
+                .fill(BuzzBuddyTheme.Colors.accentYellow.opacity(0.18))
                 .frame(width: 44, height: 44)
                 .overlay(
                     Text(initials)
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(BuzzBuddyTheme.Colors.accentYellow)
                 )
         }
     }
@@ -373,6 +420,7 @@ private struct RideAppButton: View {
                 )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(service.name)
     }
 
     @ViewBuilder

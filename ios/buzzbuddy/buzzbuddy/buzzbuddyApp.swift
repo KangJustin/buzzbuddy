@@ -145,6 +145,7 @@ struct BuzzBuddyApp: App {
                 .environmentObject(engine)
                 .environmentObject(settings)
                 .environmentObject(appState)
+                .preferredColorScheme(.dark)
 
 
         }

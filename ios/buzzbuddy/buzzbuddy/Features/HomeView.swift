@@ -8,24 +8,34 @@
 import SwiftUI
 
 struct HomeView: View {
-    @State private var isBreathing = false
-    @State private var showSafetyCheck = false
+    @State private var showSafetyCheck: Bool
+    @StateObject private var lastCheckStore = LastCheckStore()
+
+    // Debug-only screenshot helper: auto-presents the check-in cover when
+    // AppState's matching BUZZBUDDY_DEBUG_PHASE seed is active, so the
+    // reviewing/verdict screens are reachable without tapping the CTA.
+    init() {
+        #if DEBUG
+        _showSafetyCheck = State(initialValue: ProcessInfo.processInfo.environment["BUZZBUDDY_DEBUG_PHASE"] != nil)
+        #else
+        _showSafetyCheck = State(initialValue: false)
+        #endif
+    }
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                Spacer()
-
-                startButton
-
-                Text("Tap to begin your safety check")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 32)
-
-                Spacer()
+            ScrollView {
+                VStack(alignment: .leading, spacing: BuzzBuddyTheme.Spacing.lg) {
+                    header
+                    safetyCheckCard
+                    SafetyDisclaimerCard()
+                    if let lastCheck = lastCheckStore.lastCheck {
+                        lastCheckCard(lastCheck)
+                    }
+                }
+                .padding(BuzzBuddyTheme.Spacing.md)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(BuzzBuddyTheme.Colors.background.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
         }
         .fullScreenCover(isPresented: $showSafetyCheck) {
@@ -36,49 +46,87 @@ struct HomeView: View {
         }
     }
 
-    private var startButton: some View {
-        Button {
-            showSafetyCheck = true
-        } label: {
-            ZStack {
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [Color.yellow, Color(red: 0.95, green: 0.72, blue: 0.05)],
-                            center: UnitPoint(x: 0.35, y: 0.3),
-                            startRadius: 10,
-                            endRadius: 150
-                        )
-                    )
-                    .frame(width: 220, height: 220)
-
-                VStack(spacing: 2) {
-                    Text("START")
-                        .font(.system(size: 26, weight: .heavy, design: .rounded))
-                    Text("TEST")
-                        .font(.system(size: 26, weight: .heavy, design: .rounded))
-                }
-                .foregroundStyle(.white)
-                .tracking(1.2)
-            }
-            .scaleEffect(isBreathing ? 1.06 : 1.0)
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Hey there")
+                .font(.subheadline)
+                .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
+            Text("How are you feeling?")
+                .font(BuzzBuddyTheme.Typography.largeTitle)
+                .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
+            Text("Run a quick check against your personal baseline.")
+                .font(.subheadline)
+                .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
         }
-        .buttonStyle(PressableStyle())
-        .onAppear {
-            withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                isBreathing = true
+        .padding(.top, BuzzBuddyTheme.Spacing.md)
+    }
+
+    private var safetyCheckCard: some View {
+        BuzzBuddyCard(elevated: true) {
+            VStack(alignment: .leading, spacing: BuzzBuddyTheme.Spacing.md) {
+                HStack {
+                    Text("Safety Check")
+                        .font(BuzzBuddyTheme.Typography.headline)
+                        .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
+                    Spacer()
+                    Label("~2 min", systemImage: "clock")
+                        .font(.caption)
+                        .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
+                }
+
+                HStack(spacing: BuzzBuddyTheme.Spacing.md) {
+                    testIndicator(icon: "bolt.fill", label: "Reaction")
+                    testIndicator(icon: "figure.stand", label: "Balance")
+                    testIndicator(icon: "brain.head.profile", label: "Memory")
+                    testIndicator(icon: "figure.walk", label: "Walking")
+                }
+
+                BuzzBuddyButton(title: "Begin Safety Check", systemImage: "bolt.fill", kind: .primary) {
+                    showSafetyCheck = true
+                }
             }
         }
     }
-}
 
-// MARK: - Pressable Button Style
+    private func testIndicator(icon: String, label: String) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(BuzzBuddyTheme.Colors.accentYellow)
+                .frame(width: 40, height: 40)
+                .background(Circle().fill(BuzzBuddyTheme.Colors.surfaceElevated2))
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+    }
 
-private struct PressableStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.93 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.55), value: configuration.isPressed)
+    private func lastCheckCard(_ lastCheck: LastCheck) -> some View {
+        BuzzBuddyCard {
+            HStack(spacing: BuzzBuddyTheme.Spacing.sm) {
+                Image(systemName: lastCheck.category.iconSystemName)
+                    .foregroundStyle(lastCheck.category.statusColorRole.color)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Last check: \(lastCheck.category.title)")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
+                    Text(relativeDateText(lastCheck.date))
+                        .font(.caption)
+                        .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
+                }
+                Spacer()
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func relativeDateText(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
     }
 }
 

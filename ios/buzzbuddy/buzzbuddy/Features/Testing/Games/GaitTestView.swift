@@ -28,19 +28,21 @@ struct GaitTestView: View {
 
     var body: some View {
 
-        VStack(spacing: 30) {
+        VStack(spacing: BuzzBuddyTheme.Spacing.lg) {
 
             Text("Walking")
-                .font(.largeTitle)
-                .bold()
+                .font(BuzzBuddyTheme.Typography.largeTitle)
+                .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
 
 
             if isCountingDown {
 
                 Text("\(countdown)")
-                    .font(.system(size: 80))
+                    .font(BuzzBuddyTheme.Typography.numeric(80, weight: .bold))
+                    .foregroundStyle(BuzzBuddyTheme.Colors.accentYellow)
 
                 Text("Get ready...")
+                    .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
             }
 
 
@@ -48,17 +50,21 @@ struct GaitTestView: View {
 
                 Text("Walk Forward Until Done")
                     .font(.title)
+                    .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
 
                 Text("Hold your phone firmly against your chest")
+                    .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
 
                 ProgressView()
+                    .tint(BuzzBuddyTheme.Colors.accentYellow)
             }
 
 
             else if completed {
 
                 Text("Complete")
-                    .font(.largeTitle)
+                    .font(BuzzBuddyTheme.Typography.largeTitle)
+                    .foregroundStyle(BuzzBuddyTheme.Colors.textPrimary)
 
             }
 
@@ -71,19 +77,17 @@ struct GaitTestView: View {
                 Walk forward naturally until done.
                 """)
                 .multilineTextAlignment(.center)
+                .foregroundStyle(BuzzBuddyTheme.Colors.textSecondary)
 
 
-                Button {
+                BuzzBuddyButton(title: "Start Test", kind: .primary, fullWidth: false) {
                     startCountdown()
-                } label: {
-                    Text("Start Test")
-                        .font(.title2)
-                        .padding()
                 }
-                .buttonStyle(.borderedProminent)
             }
         }
         .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(BuzzBuddyTheme.Colors.background.ignoresSafeArea())
         .onDisappear { recorder.stopRecording() }
     }
 
